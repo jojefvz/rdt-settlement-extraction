@@ -247,11 +247,14 @@ def extract_settlements(pdf_path):
     settlement_date = None
     current_reserve_type = None
     current_licensing_year = None
+    current_unknown_name = None
 
     all_lines = []
     with pdfplumber.open(pdf_path) as pdf:
         for page in pdf.pages:
             text = page.extract_text()
+            if page.page_number == 2:
+                print(text)
             if text:
                 all_lines.extend(text.split('\n'))
 
@@ -273,6 +276,11 @@ def extract_settlements(pdf_path):
             if current is None or code != current['driver_code']:
                 if current:
                     settlements.append(current)
+                if code not in DRIVERS:
+                    print(f"  ⚠ Unknown driver code: {code} — skipping")
+                    current = None
+                    section = SEC_NONE
+                    continue
                 name = DRIVERS.get(code, code)[0]
                 truck = DRIVERS.get(code, code)[1]
                 driver_class = DRIVERS.get(code, code)[2]
@@ -280,6 +288,7 @@ def extract_settlements(pdf_path):
                 section = SEC_NONE
                 current_reserve_type = None
                 current_licensing_year = None
+                current_unknown_name = None
             continue
 
         if current is None:
@@ -415,6 +424,15 @@ def extract_settlements(pdf_path):
             if not line:
                 continue
 
+            # ── SECTION EXIT GUARD ───────────────────────────────────────────
+            # If we hit the summary table header, shut down Section 3 immediately
+            if re.search(r'This Settlement\s*Year-to-Date', line, re.I):
+                section = SEC_NONE
+                current_reserve_type = None
+                current_licensing_year = None
+                current_unknown_name = None
+                continue
+            
             # 1. Look for Ignore Keywords at the start of the line
             if re.match(r'^Addition to Reserve:', line, re.I):
                 continue
@@ -422,6 +440,7 @@ def extract_settlements(pdf_path):
             if re.match(r'^End Reserve Balance', line, re.I):
                 current_licensing_year = None # Reset the year tracker
                 current_reserve_type = None  # Close the active ledger window
+                current_unknown_name = None
                 continue
 
             # 2. Match a standard dollar amount at the end of the line
@@ -453,22 +472,33 @@ def extract_settlements(pdf_path):
                     current_reserve_type = 'LOAN'
                     continue  # Ignore the initial balance value
 
+                # If it didn't match known accounts, and no window is open, this IS an initial balance header!
+                elif current_reserve_type is None:
+                    current_unknown_name = description
+                    current_reserve_type = 'UNKNOWN'
+                    continue  # Ignore this initial balance value and loop to next line
+
                 # 4. Target Window Capture 
                 # If we are inside an active ledger and it didn't match the headers above, it's a transaction!
                 if current_reserve_type == 'ESCROW':
                     # Append a clean structured tuple: (Account Type, Row Description, Value)
                     current['unmapped_reserves'].append((description, amt, 'RESERVE ESCROW'))
+
                 elif current_reserve_type == 'LICENSING':
                     # Append a clean structured tuple: (Account Type, Row Description, Value)
                     current['unmapped_reserves'].append((description, amt, 'RESERVE LICENSING', current_licensing_year))
+
                 elif current_reserve_type == 'MAINTENANCE':
                     # Append a clean structured tuple: (Account Type, Row Description, Value)
                     current['unmapped_reserves'].append((description, amt, 'RESERVE MAINTENANCE'))
+
                 elif current_reserve_type == 'LOAN':
                     # Append a clean structured tuple: (Account Type, Row Description, Value)
                     current['unmapped_reserves'].append((description, amt, 'RESERVE LOAN'))
+
                 elif current_reserve_type == 'UNKNOWN':
-                    current['unmapped_reserves'].append((description, amt, 'RESERVE UNKNOWN'))
+                    # Explicitly appends the dynamic name so you see exactly what it is in your Excel
+                    current['unmapped_reserves'].append((current_unknown_name, amt, 'RESERVE UNKNOWN'))
 
     if current:
         settlements.append(current)

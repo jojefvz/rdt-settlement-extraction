@@ -64,7 +64,7 @@ PDF line description and a category of `OTHER PAY/DEDUCTIONS` so they can be han
 st.subheader("2. TOTAL SETTLEMENT")
 st.markdown("""
 Contains the driver's gross pay and total trip expenses. `PERCENTAGE PAY` becomes the **Settlements** 
-line in Excel and `TOTAL TRIP EXPENSE` become the **Diesel** line. Any **fuel or DEF charges** found in 
+line in Excel and `TOTAL TRIP EXPENSE` becomes the **Diesel** line. Any **fuel or DEF charges** found in 
 `OTHER PAY/DEDUCTIONS` are **added** to the `TOTAL TRIP EXPENSE` dollar value.
 """)
 
