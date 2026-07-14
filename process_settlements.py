@@ -15,187 +15,45 @@ from datetime import datetime, timedelta
 import pdfplumber
 import openpyxl
 from openpyxl.styles import PatternFill, Font
+import streamlit as st
+from streamlit_gsheets import GSheetsConnection
+import pandas as pd
 
-# ── Account mappings ──────────────────────────────────────────────────────────
 
-# (driver name, truck, class, notes receivable, maintenance fund)
-DRIVERS = {
-    "ROLBRE": (
-        "Rollin Brenneman",
-        "179",
-        "179",
-        "",
-        ""
-        ),
-    "ERIBUR": (
-        "Eric Burt", 
-        "79C", 
-        "075C",
-        ("N/R - Truck #75C (Burt)", "19900.9000 Notes Receivable:N/R - Truck #75C (Burt)"),
-        ("Dr Maint Funds - Tr #79C - Burt", "22467.3500 Dr Maint Funds - Tr #79C - Burt")
-        ),
-    "MICBUT": (
-        "Michael Buttjer", 
-        "187", 
-        "187",
-        "",
-        ("Dr Maint Funds - Tr # 187 - M Buttjer", "22568.9000 Dr Maint Funds - Tr # 187 - M Buttjer")
-        ),
-    "STEGRE": (
-        "Steve Green", 
-        "190", 
-        "190",
-        "",
-        ("Dr Maint Funds - Tr # 190 - Green", "22770.9000 Dr Maint Funds - Tr # 190 - Green")
-        ),
-    "WILHAL": (
-        "William Haley", 
-        "178", 
-        "178",
-        "",
-        ""
-        ),
-    "ANTHAL": (
-        "Anthony Hall", 
-        "184", 
-        "184",
-        ("Truck Payment", "20046.9000 Loyal Trucking Liability"),
-        ("Dr Maint Funds - Tr # 184 - T Hall", "22565.9000 Dr Maint Funds - Tr # 184 - T Hall")
-        ),
-    "ROBHEM": (
-        "Robert Hemenway", 
-        "71C", 
-        "071C",
-        ("N/R - Truck # 71C (Hemenway, R)", "19886.9000 Notes Receivable:N/R - Truck # 71C (Hemenway, R)"),
-        ("Dr Maint Funds - Tr # 71C -R Hemenway", "22757.9000 Dr Maint Funds - Tr # 71C -R Hemenway")
-        ),
-    "MICHIL": (
-        "Michael Hill", 
-        "181A", 
-        "181",
-        "",
-        ("Dr Maint Funds - Tr # 181A - Hill", "22561.9000 Dr Maint Funds - Tr # 181A - Hill")
-        ),
-    "MATLAW": (
-        "Matthew Laws", 
-        "35C", 
-        "035C",
-        ("N/R - Truck # 35C (Laws)", "19893.9000 Notes Receivable:N/R - Truck # 35C (Laws)"),
-        ("Dr Maint Funds - Tr # 35C - Laws, M", "22768.9000 Dr Maint Funds - Tr # 35C - Laws, M")
-        ),
-    "NICLEE": (
-        "Nicolle Lee", 
-        "194", 
-        "194",
-        "",
-        ("Dr Maint Funds - Tr# 194 N Lee", "22780.9000 Dr Maint Funds - Tr# 194 N Lee")
-        ),
-    "JOSMAY": (
-        "Josh May", 
-        "96C", 
-        "096C",
-        "",
-        ("Dr Maint Funds - Tr #96C - May", "22553.9000 Dr Maint Funds - Tr #96C - May")
-        ),
-    "CURMCL": (
-        "Curtis McLeod", 
-        "192", 
-        "192",
-        "",
-        ("Dr Maint Funds - Tr # 192 - McLeod", "22771.9000 Dr Maint Funds - Tr # 192 - McLeod")
-        ),
-    "KENMIL": (
-        "Kendall Miller", 
-        "182", 
-        "182",
-        "",
-        ("Dr Maint Funds - Tr # 182 - Miller", "22562.9000 Dr Maint Funds - Tr # 182 - Miller")
-        ),
-    "JOSPOO": (
-        "Joshua Pooler", 
-        "105C", 
-        "105C",
-        ("N/R - Truck # 105C (Pooler)", "19881.9000 Notes Receivable:N/R - Truck # 105C (Pooler)"),
-        ("Dr Maint Funds - Tr # 105C - Pooler", "22564.9000 Dr Maint Funds - Tr # 105C - Pooler")
-        ),
-    "ROAMAT": (
-        "Matthew Roach", 
-        "17C", 
-        "017C",
-        ("N/R - Truck # 17C (Roach)", "19896.9000 Notes Receivable:N/R - Truck # 17C (Roach)"),
-        ("Dr Maint Fund - Tr #17C - Roach", "22774.9000 Dr Maint Fund - Tr #17C - Roach")
-        ),
-    "JONSAL": (
-        "Jonathan Saliba", 
-        "84C", 
-        "084C",
-        "",
-        ("Dr Maint Funds - Tr #84C - Saliba", "22552.9000 Dr Maint Funds - Tr #84C - Saliba")
-        ),
-    "SCHCON": (
-        "Conrad Schulte", 
-        "47", 
-        "047G",
-        "",
-        ("Dr Maint Funds - Tr# 47 Schulte", "22777.9000 Dr Maint Funds - Tr# 47 Schulte"),
-        ),
-    "LADSOU": (
-        "Laddavanh Sourignavong", 
-        "195", 
-        "195",
-        "",
-        ("Dr Maint Funds - Tr# 195 Sourignavong", "22779.9000 Dr Maint Funds - Tr# 195 Sourignavong"),
-        ),
-    "SPEDAV": (
-        "David Spell", 
-        "110B", 
-        "124B",
-        ("N/R - Truck #110B (Spell)", "19898.9000 Notes Receivable:N/R - Truck #110B (Spell)"),
-        ("Dr Maint Funds - Tr #110B - Spell", "22776.9000 Dr Maint Funds - Tr #110B - Spell")
-        ),
-    "TIMSWE": (
-        "Tim Swett", 
-        "126E", 
-        "126E",
-        "",
-        ("Dr Maint Funds - Tr #126E - Swett", "22496.9000 Dr Maint Funds - Tr #126E - Swett")
-        ),
-    "SCOVAN": (
-        "Scott VanBuskirk", 
-        "185", 
-        "185",
-        "",
-        ""
-        ),
-    "OTHWIL": (
-        "Otho Williams", 
-        "95C", 
-        "095C",
-        ("N/R - Truck # 95C (Williams)", "19891.9000 Notes Receivable:N/R - Truck # 95C (Williams)"),
-        ("Dr Maint Funds - Tr # 95C -Williams", "22763.9000 Dr Maint Funds - Tr # 95C -Williams")
-        ),
-    "GEOWIL": (
-        "George Wiltrout", 
-        "94C", 
-        "094C",
-        ("N/R - Truck # 94C (Wiltrout)", "19888.9000 Notes Receivable:N/R - Truck # 94C (Wiltrout)"),
-        ("Dr Maint Funds - Tr # 94C -Wiltrout", "22760.9000 Dr Maint Funds - Tr # 94C -Wiltrout")
-        ),
-    "GODLEE": (
-        "Lee Godsey", 
-        "083E", 
-        "083E",
-        ("N/R - Truck #083E (Godsey)", "19899.9000 Notes Receivable:N/R - Truck #083E (Godsey)"),
-        ("Dr Maint Funds - Tr# 083E Godsey", "22781.9000 Dr Maint Funds - Tr# 083E Godsey")
-        ),
-    "DARPAR": (
-        "Darl Parry", 
-        "183A", 
-        "183",
-        "",
-        ("Dr Maint Funds - Tr # 183A - Parry", "22566.9000 Dr Maint Funds - Tr # 183A - Parry"),
-        ),
-}
+def load_drivers_from_sheets():
+    try:
+        # Establish connection using your Streamlit Secrets configuration
+        conn = st.connection("gsheets", type=GSheetsConnection)
+        df = conn.read(worksheet="Drivers", ttl="5m") # Caches for 5 minutes
+        
+        drivers_dict = {}
+        for _, row in df.iterrows():
+            code = str(row['Driver Code']).strip()
+            
+            # Reconstruct the expected nested structure
+            notes_rec = ("", "")
+            if pd.notna(row['Notes Rec Desc']) and str(row['Notes Rec Desc']).strip():
+                notes_rec = (str(row['Notes Rec Desc']).strip(), str(row['Notes Rec Account']).strip())
+                
+            maint_fund = ("", "")
+            if pd.notna(row['Maint Fund Desc']) and str(row['Maint Fund Desc']).strip():
+                maint_fund = (str(row['Maint Fund Desc']).strip(), str(row['Maint Fund Account']).strip())
+                
+            drivers_dict[code] = (
+                str(row['Driver Name']).strip(),
+                str(row['Truck']).strip(),
+                str(row['Class']).strip(),
+                notes_rec,
+                maint_fund
+            )
+        return drivers_dict
+    except Exception as e:
+        st.error(f"Failed to load driver mappings from Google Sheets: {e}")
+        return {}
+
+# Re-establish the global DRIVERS variable dynamically
+# {driver code: (driver name, truck, class, notes receivable, maintenance fund)}
+DRIVERS = load_drivers_from_sheets()
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -253,8 +111,6 @@ def extract_settlements(pdf_path):
     with pdfplumber.open(pdf_path) as pdf:
         for page in pdf.pages:
             text = page.extract_text()
-            if page.page_number == 2:
-                print(text)
             if text:
                 all_lines.extend(text.split('\n'))
 
@@ -432,7 +288,7 @@ def extract_settlements(pdf_path):
                 current_licensing_year = None
                 current_unknown_name = None
                 continue
-            
+
             # 1. Look for Ignore Keywords at the start of the line
             if re.match(r'^Addition to Reserve:', line, re.I):
                 continue
