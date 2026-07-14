@@ -23,7 +23,7 @@ management system and converts it into an Excel file formatted for direct import
 
 Each driver's settlement becomes a **Bill** in QuickBooks, with individual line items mapped 
 to the correct accounts. Any line items that could not be automatically mapped are included 
-directly in the Excel sheet with their original description so they can be categorized manually 
+directly in the Excel sheet with placeholder descriptions so they can be categorized manually 
 before importing.
 """)
 
@@ -33,14 +33,12 @@ st.divider()
 
 st.header("How to Use")
 st.markdown("""
-1. Launch the app by double-clicking the launcher file
-2. Your browser opens automatically at `http://localhost:8501`
-3. Click **Browse files** and select the weekly settlement PDF
-4. Click **Process Settlements**
-5. Review the processing summary and driver breakdown
-6. Click **Download Excel File**
-7. Open the Excel file and fill in the Category column for any unmapped rows
-8. Import into QuickBooks
+1. Click **Browse files** and select the weekly settlement PDF
+2. Click **Process Settlements**
+3. Review the processing summary and driver breakdown
+4. Click **Download Excel File**
+5. Open the Excel file and fill in the Category column for any unmapped/uncertain rows
+6. Import into QuickBooks
 """)
 
 st.divider()
@@ -49,34 +47,35 @@ st.divider()
 
 st.header("How the PDF is Read")
 st.markdown("""
-The script reads the PDF line by line and works through three sections for each driver in order.
-A driver must exist in the `DRIVERS` dictionary in the script to be processed. Unknown driver 
-codes are skipped with a warning printed to the terminal.
+The script reads the PDF line by line and for each driver extracts transactions 
+from three sections: OTHER PAY/DEDUCTIONS, TOTAL SETTLEMENT, and RESERVES. Each relevant transaction line 
+that **must** be accounted for, will be extracted. A driver must exist in the `DRIVERS` dictionary 
+in the script in order to be processed. Unknown driver codes are skipped with a warning printed to the terminal.
 """)
 
 st.subheader("1. OTHER PAY/DEDUCTIONS")
 st.markdown("""
 Contains insurance deductions, garnishments, reserve contributions, advances, fuel charges, 
-and scales. The script scans each line with a dollar amount and maps it if it matches a known 
-pattern. Lines that are not recognized are included in the Excel output with their original 
-description and a category of `OTHER PAY/DEDUCTIONS` so they can be filled in manually.
+and scales. The script scans each line with a dollar amount and maps the line if it matches 1 to 1 with an account in QuickBooks.
+Lines that do not have simple mappings are STILL included in the Excel output with their original 
+PDF line description and a category of `OTHER PAY/DEDUCTIONS` so they can be handled manually.
 """)
 
 st.subheader("2. TOTAL SETTLEMENT")
 st.markdown("""
-Contains the driver's gross pay and total trip expenses. Gross pay becomes the **Settlements** 
-line item and trip expenses become the **Diesel** line item. Any fuel or DEF charges found in 
-OTHER PAY/DEDUCTIONS that were not already baked into the trip expenses total are added on top.
+Contains the driver's gross pay and total trip expenses. PERCENTAGE PAY becomes the **Settlements** 
+line in Excel and TOTAL TRIP EXPENSE become the **Diesel** line. Any **fuel or DEF charges** found in 
+OTHER PAY/DEDUCTIONS are **added** to the TOTAL TRIP EXPENSE dollar value.
 """)
 
 st.subheader("3. RESERVES")
 st.markdown("""
 Shows running balances for each reserve account — Escrow, Licensing, Maintenance, and Loan. 
-The script ignores opening balances and "Addition to Reserve" lines since those amounts are 
-already captured in OTHER PAY/DEDUCTIONS. Dated transaction lines within each reserve 
-(maintenance charges, repairs, parts) are captured and routed to their correct QB account 
-based on which reserve they belong to. Unrecognized reserve types are included in the Excel 
-output with a category of `RESERVE UNKNOWN`.
+Within each reserve, any transaction lines (maintenance charges, repairs, parts)
+between the **initial balance** and the **end balance** are captured and routed to their reserve QB account.
+The lines "Addition to Reserve" are not captured since those amounts are already extracted from the section OTHER PAY/DEDUCTIONS.
+If an **unrecognized reserve** appears, the transactions that took place
+are STILL included in the Excel output with a category of `RESERVE UNKNOWN`.
 """)
 
 st.divider()
@@ -85,22 +84,6 @@ st.divider()
 
 st.header("Current Mappings")
 st.markdown("These are the line items the script currently maps automatically:")
-
-st.subheader("From TOTAL SETTLEMENT")
-st.table({
-    "PDF Line Item": [
-        "PERCENTAGE PAY(...)",
-        "TOTAL TRIP EXPENSES + fuel/DEF from OTHER PAY",
-    ],
-    "Excel Description": [
-        "Settlements",
-        "Diesel",
-    ],
-    "QuickBooks Category": [
-        "53400.3500 Driver Pay:I/C Settlements",
-        "54100.1500 Truck Expense:Diesel",
-    ]
-})
 
 st.subheader("From OTHER PAY/DEDUCTIONS")
 st.table({
@@ -128,8 +111,8 @@ st.table({
         "Garnishments",
         "Scales",
         "EFS Mastercard Advance",
-        "Added to Diesel total",
-        "Added to Diesel total",
+        "No Description, simply added to Diesel total",
+        "No Description, simply added to Diesel total",
         "2025 Licensing Accrual",
         "2026 Licensing Accrual",
         "Owner/Operator Escrow",
@@ -154,23 +137,19 @@ st.table({
     ]
 })
 
-st.subheader("From RESERVES")
+st.subheader("From TOTAL SETTLEMENT")
 st.table({
-    "Reserve Type": [
-        "Escrow — dated transaction",
-        "Licensing 2025 — dated transaction",
-        "Licensing 2026 — dated transaction",
-        "Maintenance — dated transaction",
-        "Loan — dated transaction",
-        "Unknown — dated transaction",
+    "PDF Line Item": [
+        "PERCENTAGE PAY(...)",
+        "TOTAL TRIP EXPENSES + fuel/DEF from OTHER PAY/DEDUCTIONS",
+    ],
+    "Excel Description": [
+        "Settlements",
+        "Diesel",
     ],
     "QuickBooks Category": [
-        "22418.9000 Owner/Operator Escrow",
-        "22397.9000 2025 Licensing Accrual",
-        "22398.9000 2026 Licensing Accrual",
-        "Driver-specific Maint Fund account",
-        "10051.9000 Truck Expense:Comdata Comcheck",
-        "RESERVE UNKNOWN — must be filled in manually",
+        "53400.3500 Driver Pay:I/C Settlements",
+        "54100.1500 Truck Expense:Diesel",
     ]
 })
 
@@ -180,15 +159,48 @@ st.divider()
 
 st.header("Unmapped Lines")
 st.markdown("""
-Any line item the script could not map is still written to the Excel file with:
+Any line item the script could not map cleanly is still written to the Excel file with:
+"""
+)           
 
-- The original description from the PDF in the **Description** column
-- The dollar amount in the **Unit Price** column
-- A placeholder in the **Category** column (`OTHER PAY/DEDUCTIONS` or `RESERVE UNKNOWN`)
+st.subheader("From OTHER PAY/DEDUCTIONS")
+st.table({
+    "PDF Line Item": [
+        "PDF line the script cannot map cleanly",
+    ],
+    "Excel Description": [
+        "PDF line description is used as placeholder",
+    ],
+    "QuickBooks Category": [
+        "OTHER PAY/DEDUCTIONS used as placeholder",
+    ]
+})
 
-These rows need to have their Category filled in manually before importing into QuickBooks. 
-The processing summary in the app shows how many unmapped lines exist per driver.
-""")
+st.subheader("From RESERVES")
+st.table({
+    "PDF Line Item": [
+        "Transaction lines between Escrow initial balance & end balance, NOT including 'Addition to Reserve:' lines",
+        "Transaction lines between Licensing initial balance & end balance, NOT including 'Addition to Reserve:' lines",
+        "Transaction lines between Maintenance initial balance & end balance, NOT including 'Addition to Reserve:' lines",
+        "Transaction lines between Loan initial balance & end balance, NOT including 'Addition to Reserve:' lines",
+        "Transaction lines between the initial balance & end balance, NOT including 'Addition to Reserve:' lines",
+    ],
+    "Excel Description": [
+        "PDF line description is used as placeholder",
+        "[year] Licensing Accrual",
+        "PDF line description is used as placeholder",
+        "Driver-specific Maint Fund",
+        "PDF line description is used as placeholder",
+        "PDF line description is used as placeholder",
+    ],
+    "QuickBooks Category": [
+        "22418.9000 Owner/Operator Escrow",
+        "Driver-specific Maint Fund account",
+        "2239x.9000 [year] Licensing Accrual",
+        "10051.9000 Truck Expense:Comdata Comcheck",
+        "RESERVE UNKNOWN used as placeholder",
+    ]
+})
 
 st.divider()
 
@@ -202,6 +214,15 @@ and the Excel row will contain `UNMAPPED` in the Category column.
 
 To fix this permanently, the driver's Notes Receivable or Maintenance Fund account needs 
 to be added to the `DRIVERS` dictionary in `process_settlements.py`.
+""")
+
+st.divider()
+
+# ── Unknown drivers warning ──────────────────────────────────────────────────
+
+st.header("Unknown Drivers Warning")
+st.markdown("""
+Drivers not found in the script's driver dictionary will be SKIPPED entirely.
 """)
 
 st.divider()
@@ -225,7 +246,7 @@ Invoice/Bill Number belong to the same bill in QuickBooks.
 | Description | Line item description |
 | Unit Price | Dollar amount |
 | Category | QuickBooks account |
-| Class | Driver's permanent truck/class number |
+| Class | Driver's QuickBooks class number |
 
 One blank row is added after each driver's entries, pre-filled with the driver's bill 
 information, for any additional manual entries needed.
@@ -233,20 +254,4 @@ information, for any additional manual entries needed.
 
 st.divider()
 
-# ── Files ─────────────────────────────────────────────────────────────────────
-
-st.header("Files")
-st.markdown("""
-All files must stay in the same folder:
-
-| File | Purpose |
-|---|---|
-| `process_settlements.py` | Core script — PDF parsing, account mappings, Excel generation |
-| `App.py` | Streamlit UI — the browser interface |
-| `pages/Documentation.py` | This documentation page |
-| `launch_mac.command` | Launcher for Mac — double-click to start |
-| `launch_windows.bat` | Launcher for Windows — double-click to start |
-""")
-
-st.divider()
 st.caption("Jim Daws Trucking LLC — Settlement Processor — Internal Use Only")
