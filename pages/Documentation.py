@@ -14,6 +14,33 @@ st.title("📖 Documentation")
 st.caption("How the Settlement Processor works")
 st.divider()
 
+# ── TLDR ──────────────────────────────────────────────────────────────────
+
+st.header("TLDR")
+st.markdown("""
+- Lines are only extracted from sections: OTHER PAY/DEDUCTIONS, TOTAL SETTLEMENT, and RESERVES
+
+- Every line that needs to be accounted for, is extracted and displayed in Excel file
+            
+- 90 percent of mappings are certain
+            
+- Uncertain mappings only come from OTHER PAY/DEDUCTIONS and RESERVES
+            
+- Reserve transactions are more complex, take time to validate those entries on Excel file
+
+- Lines from OTHER PAY/DEDUCTIONS with uncertain account mappings have the category set to OTHER PAY/DEDUCTIONS
+            
+- Lines extracted from RESERVES section are **all** uncertain account mappings and have the category set to a placeholder account
+            
+- The dollar value set on Excel for Truck Diesel Expenses is the sum of TOTAL TRIP EXPENSES plus lines
+            in OTHER PAY/DEDUCTIONS that are fuel or DEF related
+
+- New drivers not in drivers list are SKIPPED entirely
+
+""")
+
+st.divider()
+
 # ── Overview ──────────────────────────────────────────────────────────────────
 
 st.header("Overview")
@@ -82,8 +109,8 @@ st.divider()
 
 # ── Mappings ──────────────────────────────────────────────────────────────────
 
-st.header("Current Mappings")
-st.markdown("These are the line items the script currently maps automatically:")
+st.header("Certain Mappings")
+st.markdown("These are the line items the script maps with certainty:")
 
 st.subheader("From OTHER PAY/DEDUCTIONS")
 st.table({
@@ -155,18 +182,18 @@ st.table({
 
 st.divider()
 
-# ── Unmapped lines ────────────────────────────────────────────────────────────
+# ── Uncertain Mappings  ────────────────────────────────────────────────────────────
 
-st.header("Unmapped Lines")
+st.header("Uncertain Mappings")
 st.markdown("""
-Any line item the script could not map cleanly is still written to the Excel file with:
+Any line item the script could not map with certainty is still written to the Excel file with:
 """
 )           
 
 st.subheader("From OTHER PAY/DEDUCTIONS")
 st.table({
     "PDF Line Item": [
-        "Unmapped PDF line",
+        "Complex or novel PDF line",
     ],
     "Excel Description": [
         "PDF line description as placeholder",
