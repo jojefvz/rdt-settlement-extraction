@@ -48,7 +48,7 @@ st.divider()
 st.header("How the PDF is Read")
 st.markdown("""
 The script reads the PDF line by line and for each driver extracts transactions 
-from three sections: OTHER PAY/DEDUCTIONS, TOTAL SETTLEMENT, and RESERVES. Each relevant transaction line 
+from three sections: `OTHER PAY/DEDUCTIONS`, `TOTAL SETTLEMENT`, and `RESERVES`. Each relevant transaction line 
 that **must** be accounted for, will be extracted. A driver must exist in the `DRIVERS` dictionary 
 in the script in order to be processed. Unknown driver codes are skipped with a warning printed to the terminal.
 """)
@@ -63,9 +63,9 @@ PDF line description and a category of `OTHER PAY/DEDUCTIONS` so they can be han
 
 st.subheader("2. TOTAL SETTLEMENT")
 st.markdown("""
-Contains the driver's gross pay and total trip expenses. PERCENTAGE PAY becomes the **Settlements** 
-line in Excel and TOTAL TRIP EXPENSE become the **Diesel** line. Any **fuel or DEF charges** found in 
-OTHER PAY/DEDUCTIONS are **added** to the TOTAL TRIP EXPENSE dollar value.
+Contains the driver's gross pay and total trip expenses. `PERCENTAGE PAY` becomes the **Settlements** 
+line in Excel and `TOTAL TRIP EXPENSE` become the **Diesel** line. Any **fuel or DEF charges** found in 
+`OTHER PAY/DEDUCTIONS` are **added** to the `TOTAL TRIP EXPENSE` dollar value.
 """)
 
 st.subheader("3. RESERVES")
@@ -73,7 +73,7 @@ st.markdown("""
 Shows running balances for each reserve account — Escrow, Licensing, Maintenance, and Loan. 
 Within each reserve, any transaction lines (maintenance charges, repairs, parts)
 between the **initial balance** and the **end balance** are captured and routed to their reserve QB account.
-The lines "Addition to Reserve" are not captured since those amounts are already extracted from the section OTHER PAY/DEDUCTIONS.
+The lines "Addition to Reserve" are not captured since those amounts are already extracted from the section `OTHER PAY/DEDUCTIONS`.
 If an **unrecognized reserve** appears, the transactions that took place
 are STILL included in the Excel output with a category of `RESERVE UNKNOWN`.
 """)
@@ -166,39 +166,42 @@ Any line item the script could not map cleanly is still written to the Excel fil
 st.subheader("From OTHER PAY/DEDUCTIONS")
 st.table({
     "PDF Line Item": [
-        "PDF line the script cannot map cleanly",
+        "Unmapped PDF line",
     ],
     "Excel Description": [
-        "PDF line description is used as placeholder",
+        "PDF line description as placeholder",
     ],
     "QuickBooks Category": [
-        "OTHER PAY/DEDUCTIONS used as placeholder",
+        "OTHER PAY/DEDUCTIONS as placeholder",
     ]
 })
 
 st.subheader("From RESERVES")
+st.markdown("""
+Remember that lines beginning with 'Addition to Reserve:' are NOT extracted.
+These lines appear in the `OTHER PAY/DEDUCTIONS` section and are already accounted for.
+""")
 st.table({
     "PDF Line Item": [
-        "Transaction lines between Escrow initial balance & end balance, NOT including 'Addition to Reserve:' lines",
-        "Transaction lines between Licensing initial balance & end balance, NOT including 'Addition to Reserve:' lines",
-        "Transaction lines between Maintenance initial balance & end balance, NOT including 'Addition to Reserve:' lines",
-        "Transaction lines between Loan initial balance & end balance, NOT including 'Addition to Reserve:' lines",
-        "Transaction lines between the initial balance & end balance, NOT including 'Addition to Reserve:' lines",
+        "Lines between reserve initial balance & end balance",
+        "Lines between reserve initial balance & end balance",
+        "Lines between reserve initial balance & end balance",
+        "Lines between reserve initial balance & end balance",
+        "Lines between reserve initial balance & end balance",
     ],
     "Excel Description": [
-        "PDF line description is used as placeholder",
+        "PDF line description as placeholder",
         "[year] Licensing Accrual",
-        "PDF line description is used as placeholder",
         "Driver-specific Maint Fund",
-        "PDF line description is used as placeholder",
-        "PDF line description is used as placeholder",
+        "PDF line description as placeholder",
+        "PDF line description as placeholder",
     ],
     "QuickBooks Category": [
         "22418.9000 Owner/Operator Escrow",
         "Driver-specific Maint Fund account",
         "2239x.9000 [year] Licensing Accrual",
         "10051.9000 Truck Expense:Comdata Comcheck",
-        "RESERVE UNKNOWN used as placeholder",
+        "RESERVE UNKNOWN as placeholder",
     ]
 })
 
