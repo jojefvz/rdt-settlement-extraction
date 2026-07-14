@@ -212,7 +212,7 @@ if uploaded_file:
                     f"**{s['driver_name']}**{flag} &nbsp;|&nbsp; "
                     f"Class: `{s['driver_class']}` &nbsp;|&nbsp; "
                     f"INV: `{inv}` &nbsp;|&nbsp; "
-                    f"Gross: `${s['gross_pay']:,.2f}` &nbsp;|&nbsp; "
+                    f"Gross: `${s['gross_pay']}` &nbsp;|&nbsp; "
                     f"Unmapped: `{unmapped_count}`"
                 )
 
