@@ -8,9 +8,14 @@ import os
 import streamlit as st
 import pandas as pd
 from streamlit_gsheets import GSheetsConnection
-from process_settlements import extract_settlements, settlement_to_rows, write_excel, DRIVERS, load_drivers_from_sheets
+import process_settlements
+from process_settlements import extract_settlements, settlement_to_rows, write_excel, load_drivers_from_sheets
 
+# Load fresh drivers for this run, and sync the module-level DRIVERS inside
+# process_settlements.py too — otherwise extract_settlements()/settlement_to_rows()
+# keep using whatever was cached the first time the module was imported.
 DRIVERS = load_drivers_from_sheets()
+process_settlements.DRIVERS = DRIVERS
 
 # ── Page config ───────────────────────────────────────────────────────────────
 
@@ -136,6 +141,12 @@ if uploaded_file:
 
         with st.spinner("Processing settlements..."):
 
+            # Refresh drivers immediately before processing so any additions/removals
+            # made in the expander above (or by someone else) are picked up, and keep
+            # process_settlements.py's copy in sync with it.
+            DRIVERS = load_drivers_from_sheets()
+            process_settlements.DRIVERS = DRIVERS
+
             with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_pdf:
                 tmp_pdf.write(uploaded_file.read())
                 tmp_pdf_path = tmp_pdf.name
@@ -148,7 +159,7 @@ if uploaded_file:
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp_xlsx:
                     tmp_xlsx_path = tmp_xlsx.name
 
-                write_excel(settlements, tmp_xlsx_path)
+                write_excel(settlements, tmp_xlsx_path, drivers=DRIVERS)
 
                 with open(tmp_xlsx_path, "rb") as f:
                     excel_bytes = f.read()
@@ -170,8 +181,8 @@ if uploaded_file:
 
         unmapped_drivers = [
             s for s in settlements
-            if not any(DRIVERS.get(s['driver_code'], ('','','','',''))[3]) or
-               not any(DRIVERS.get(s['driver_code'], ('','','','',''))[4])
+            if (s['truck_note'] is not None and not any(DRIVERS.get(s['driver_code'], ('','','','',''))[3])) or
+               (s['maint_fund'] is not None and not any(DRIVERS.get(s['driver_code'], ('','','','',''))[4]))
         ]
 
         col1, col2, col3 = st.columns(3)
@@ -194,8 +205,8 @@ if uploaded_file:
                 unmapped_count = len(s['unmapped_other_pay']) + len(s['unmapped_reserves'])
                 driver_info = DRIVERS.get(s['driver_code'], ('','','','',''))
                 flag = " ⚠️" if (
-                    (s['truck_note'] is not None and not driver_info[3]) or
-                    (s['maint_fund'] is not None and not driver_info[4])
+                    (s['truck_note'] is not None and not any(driver_info[3])) or
+                    (s['maint_fund'] is not None and not any(driver_info[4]))
                 ) else ""
                 st.markdown(
                     f"**{s['driver_name']}**{flag} &nbsp;|&nbsp; "

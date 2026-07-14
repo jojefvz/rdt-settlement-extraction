@@ -495,7 +495,8 @@ def settlement_to_rows(s, drivers=None):
 
     return rows
 
-def write_excel(settlements, output_path):
+def write_excel(settlements, output_path, drivers=None):
+    drivers = drivers if drivers is not None else DRIVERS
     wb = openpyxl.Workbook()
 
     # ── Sheet 1: QB Import data ───────────────────────────────────────────────
@@ -509,7 +510,7 @@ def write_excel(settlements, output_path):
         cell.font = white_font
 
     for s in settlements:
-        for row in settlement_to_rows(s):
+        for row in settlement_to_rows(s, drivers=drivers):
             ws.append(row)
 
     for row in ws.iter_rows(min_row=2):
@@ -519,7 +520,7 @@ def write_excel(settlements, output_path):
 
     wb.save(output_path)
 
-    total_rows = sum(len(settlement_to_rows(s)) for s in settlements)
+    total_rows = sum(len(settlement_to_rows(s, drivers=drivers)) for s in settlements)
     print(f"Saved: {output_path}")
     print(f"  {len(settlements)} driver settlements → {total_rows} QB rows")
 
@@ -534,7 +535,7 @@ if __name__ == '__main__':
     output_path = sys.argv[2] if len(sys.argv) > 2 else pdf_path.replace('.pdf', '_QB.xlsx')
 
     print(f"Processing: {pdf_path}")
-    settlements = extract_settlements(pdf_path)
+    settlements = extract_settlements(pdf_path, drivers=DRIVERS)
     print(f"Found: {len(settlements)} driver settlements")
 
     for s in settlements:
@@ -545,6 +546,6 @@ if __name__ == '__main__':
             (s['maint_fund'] is not None and not any(maint_fund))
         ) else ""
         print(f"  {s['driver_name']:<30} INV:{s['invoice_number']:<16} "
-            f"Gross:{s['gross_pay']}{flag}")
+              f"Gross:{s['gross_pay']}{flag}")
 
-    write_excel(settlements, output_path)
+    write_excel(settlements, output_path, drivers=DRIVERS)
