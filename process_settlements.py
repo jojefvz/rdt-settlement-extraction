@@ -98,7 +98,8 @@ SEC_OTHER_PAY        = 1
 SEC_TOTAL_SETTLEMENT = 2
 SEC_RESERVES         = 3
 
-def extract_settlements(pdf_path):
+def extract_settlements(pdf_path, drivers=None):
+    drivers = drivers if drivers is not None else DRIVERS
     settlements = []
     current = None
     section = SEC_NONE
@@ -132,14 +133,14 @@ def extract_settlements(pdf_path):
             if current is None or code != current['driver_code']:
                 if current:
                     settlements.append(current)
-                if code not in DRIVERS:
+                if code not in drivers:
                     print(f"  ⚠ Unknown driver code: {code} — skipping")
                     current = None
                     section = SEC_NONE
                     continue
-                name = DRIVERS.get(code, code)[0]
-                truck = DRIVERS.get(code, code)[1]
-                driver_class = DRIVERS.get(code, code)[2]
+                name = drivers.get(code, code)[0]
+                truck = drivers.get(code, code)[1]
+                driver_class = drivers.get(code, code)[2]
                 current = new_settlement(settlement_date, code, name, truck, driver_class)
                 section = SEC_NONE
                 current_reserve_type = None
@@ -390,7 +391,8 @@ def make_row(s, description, unit_price, category):
         s['driver_class'],
     ]
 
-def settlement_to_rows(s):
+def settlement_to_rows(s, drivers=None):
+    drivers = drivers if drivers is not None else DRIVERS
     rows = []
     driver_code = s.get('driver_code', '') or ''
 
@@ -417,7 +419,7 @@ def settlement_to_rows(s):
                              '53710.3500 Occupational Accident Insurance'))
 
     if s['truck_note'] is not None:
-        truck_note = DRIVERS.get(driver_code)[3]
+        truck_note = drivers.get(driver_code)[3]
         if truck_note:
             rows.append(make_row(s, truck_note[0], s['truck_note'], truck_note[1]))
         else:
@@ -425,7 +427,7 @@ def settlement_to_rows(s):
                                  s['truck_note'], f"UNMAPPED - Notes Receivable Truck {s['truck']}"))
 
     if s['maint_fund'] is not None:
-        maint_fund = DRIVERS.get(driver_code)[4]
+        maint_fund = drivers.get(driver_code)[4]
         if maint_fund:
             rows.append(make_row(s, maint_fund[0], s['maint_fund'], maint_fund[1]))
         else:
@@ -480,7 +482,7 @@ def settlement_to_rows(s):
                 rows.append(make_row(s, description, amt, '22398.9000 2026 Licensing Accrual'))
             
         elif reserve_type == 'RESERVE MAINTENANCE':
-            driver_maint_fund = DRIVERS.get(s['driver_code'])[4]
+            driver_maint_fund = drivers.get(s['driver_code'])[4]
             rows.append(make_row(s, driver_maint_fund[0], amt, driver_maint_fund[1]))
 
         elif reserve_type == 'RESERVE LOAN':
@@ -539,10 +541,10 @@ if __name__ == '__main__':
         notes_rec = DRIVERS.get(s['driver_code'])[3]
         maint_fund = DRIVERS.get(s['driver_code'])[4]
         flag = " ⚠ UNMAPPED" if (
-            (s['truck_note'] is not None and not notes_rec) or
-            (s['maint_fund'] is not None and not maint_fund)
+            (s['truck_note'] is not None and not any(notes_rec)) or
+            (s['maint_fund'] is not None and not any(maint_fund))
         ) else ""
         print(f"  {s['driver_name']:<30} INV:{s['invoice_number']:<16} "
-              f"Gross:{s['gross_pay']}{flag}")
+            f"Gross:{s['gross_pay']}{flag}")
 
     write_excel(settlements, output_path)

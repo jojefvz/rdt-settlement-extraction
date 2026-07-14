@@ -142,7 +142,7 @@ if uploaded_file:
 
             tmp_xlsx_path = None
             try:
-                settlements = extract_settlements(tmp_pdf_path)
+                settlements = extract_settlements(tmp_pdf_path, drivers=DRIVERS)
 
                 output_name = uploaded_file.name.replace(".pdf", "_QB.xlsx")
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp_xlsx:
@@ -162,7 +162,7 @@ if uploaded_file:
         st.divider()
         st.success("✅ Processing complete!")
 
-        total_rows = sum(len(settlement_to_rows(s)) for s in settlements)
+        total_rows = sum(len(settlement_to_rows(s, drivers=DRIVERS)) for s in settlements)
         total_unmapped = sum(
             len(s['unmapped_other_pay']) + len(s['unmapped_reserves'])
             for s in settlements
@@ -170,8 +170,8 @@ if uploaded_file:
 
         unmapped_drivers = [
             s for s in settlements
-            if (s['truck_note'] is not None and not DRIVERS.get(s['driver_code'], ('','','','',''))[3]) or
-               (s['maint_fund'] is not None and not DRIVERS.get(s['driver_code'], ('','','','',''))[4])
+            if not any(DRIVERS.get(s['driver_code'], ('','','','',''))[3]) or
+               not any(DRIVERS.get(s['driver_code'], ('','','','',''))[4])
         ]
 
         col1, col2, col3 = st.columns(3)
